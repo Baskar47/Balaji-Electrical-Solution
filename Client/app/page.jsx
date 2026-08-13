@@ -74,8 +74,8 @@ export default function Page() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone: phoneVal, service, date })
-      }).catch(() => {
-        // Silently catch background server fetch errors when server is offline
+      }).catch((err) => {
+         console.log(err,'something went wrong')
       })
     } catch (err) {
       // Ignore network sync errors
