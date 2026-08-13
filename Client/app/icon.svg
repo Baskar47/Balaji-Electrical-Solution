@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient: Deep slate navy blue with electric pop -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="50%" stop-color="#1E1B4B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+
+    <!-- Electric Bolt Gradient: Electric Amber Yellow to Bright Gold & Orange -->
+    <linearGradient id="bolt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF500"/>
+      <stop offset="30%" stop-color="#FFD700"/>
+      <stop offset="70%" stop-color="#FF9900"/>
+      <stop offset="100%" stop-color="#FF5500"/>
+    </linearGradient>
+
+    <!-- Inner Glow/Highlight Gradient -->
+    <linearGradient id="highlight-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#FFE600" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <!-- Glowing Background Aura -->
+    <radialGradient id="aura-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#EAB308" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#EAB308" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#EAB308" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Outer Ring Gradient -->
+    <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Container Base with Smooth Rounded Corners -->
+  <rect width="512" height="512" rx="120" fill="url(#bg-grad)"/>
+
+  <!-- Subtle Glowing Aura -->
+  <circle cx="256" cy="256" r="210" fill="url(#aura-grad)"/>
+
+  <!-- Stylish Metallic Outer Ring -->
+  <rect x="20" y="20" width="472" height="472" rx="108" fill="none" stroke="url(#ring-grad)" stroke-width="10" stroke-opacity="0.6"/>
+
+  <!-- Electric Energy Plug/Circle Accent -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#F59E0B" stroke-width="3" stroke-dasharray="12 12" stroke-opacity="0.4"/>
+
+  <!-- Main Electric Bolt Shape -->
+  <path d="M296 48 L144 268 C138 277 144 288 155 288 H248 L208 456 C203 470 220 478 229 466 L368 244 C374 235 368 224 357 224 H264 L304 56 C309 42 292 34 283 46 Z" fill="url(#bolt-grad)"/>
+
+  <!-- Bright Inner Core Bolt Highlight -->
+  <path d="M290 60 L165 272 H248 L218 436 L347 240 H264 L298 68 Z" fill="url(#highlight-grad)"/>
+
+  <!-- Energy Sparkles -->
+  <polygon points="120,140 128,120 148,128 128,136" fill="#FACC15" opacity="0.8"/>
+  <polygon points="380,360 388,340 408,348 388,356" fill="#FACC15" opacity="0.8"/>
+  <circle cx="390" cy="130" r="8" fill="#38BDF8" opacity="0.9"/>
+  <circle cx="120" cy="380" r="10" fill="#F59E0B" opacity="0.9"/>
+</svg>
