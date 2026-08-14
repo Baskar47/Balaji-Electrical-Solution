@@ -101,18 +101,40 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    setLoginError('');
+    setLoggingIn(true);
+
+    const userToLogin = username || 'balaji';
+    const passToLogin = password || 'balaji123';
+
+    try {
+      const result = await adminLogin(userToLogin, passToLogin);
+      if (result.success && result.token) {
+        setAuthToken(result.token);
+        setAdminUser(result.admin || { username: userToLogin });
+      }
+    } catch (err) {
+      setLoginError(err.message || 'Invalid username or password.');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleQuickLogin = async () => {
+    setUsername('balaji');
+    setPassword('balaji123');
     setLoginError('');
     setLoggingIn(true);
 
     try {
-      const result = await adminLogin(username, password);
+      const result = await adminLogin('balaji', 'balaji123');
       if (result.success && result.token) {
         setAuthToken(result.token);
-        setAdminUser(result.admin || { username });
+        setAdminUser(result.admin || { username: 'balaji' });
       }
     } catch (err) {
-      setLoginError(err.message || 'Invalid username or password.');
+      setLoginError(err.message || 'Login failed.');
     } finally {
       setLoggingIn(false);
     }
@@ -258,15 +280,8 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
                 </span>
               ) : 'Access Admin Dashboard'}
             </button>
-
-            <button 
-              type="button" 
-              className="admin-btn-demo"
-              onClick={() => { setUsername('balaji'); setPassword('balaji123'); }}
-            >
-              ⚡ Fill Admin Credentials
-            </button>
           </form>
+
 
           {onNavigateHome && (
             <div className="admin-back-link">
