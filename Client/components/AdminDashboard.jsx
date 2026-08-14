@@ -40,8 +40,8 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
   const [adminUser, setAdminUser] = useState(() => getAdminUser());
   
   // Login form state
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('balaji');
+  const [password, setPassword] = useState('balaji123');
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
@@ -105,8 +105,8 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
     setLoginError('');
     setLoggingIn(true);
 
-    const userToLogin = username || 'balaji';
-    const passToLogin = password || 'balaji123';
+    const userToLogin ='balaji';
+    const passToLogin ='balaji123';
 
     try {
       const result = await adminLogin(userToLogin, passToLogin);
