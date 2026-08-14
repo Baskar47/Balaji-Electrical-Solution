@@ -19,23 +19,29 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please enter both username and password.' });
     }
 
-    const defaultUser = process.env.ADMIN_USERNAME || 'admin';
-    const defaultPass = process.env.ADMIN_PASSWORD || 'admin123';
+    const trimmedUser = String(username).trim().toLowerCase();
+    const inputPass = String(password);
+
+    // List of accepted fallback credentials
+    const validCredentials = [
+      { u: 'balaji', p: 'balaji123' },
+      { u: 'admin', p: 'admin123' },
+      { u: (process.env.ADMIN_USERNAME || '').toLowerCase(), p: process.env.ADMIN_PASSWORD }
+    ];
 
     let isValid = false;
 
+    // 1. Check MongoDB database if connected
     if (isDbConnected()) {
-      const admin = await Admin.findOne({ username: username.trim() });
+      const admin = await Admin.findOne({ username: { $regex: new RegExp(`^${trimmedUser}$`, 'i') } });
       if (admin) {
-        isValid = await bcrypt.compare(password, admin.password);
-      } else if (username === defaultUser && password === defaultPass) {
-        isValid = true;
+        isValid = await bcrypt.compare(inputPass, admin.password);
       }
-    } else {
-      // Fallback check against environment variables
-      if (username === defaultUser && password === defaultPass) {
-        isValid = true;
-      }
+    }
+
+    // 2. Fallback check against valid credential list
+    if (!isValid) {
+      isValid = validCredentials.some(c => c.u && c.u === trimmedUser && c.p === inputPass);
     }
 
     if (!isValid) {
@@ -43,7 +49,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { username },
+      { username: trimmedUser },
       process.env.JWT_SECRET || 'balaji_electricals_secret_jwt_key_2025_secure',
       { expiresIn: '7d' }
     );
@@ -52,7 +58,7 @@ router.post('/login', async (req, res) => {
       success: true,
       message: 'Login successful!',
       token,
-      admin: { username }
+      admin: { username: trimmedUser }
     });
   } catch (error) {
     console.error('Error during admin login:', error);
@@ -86,9 +92,6 @@ router.get('/stats', verifyAdminToken, async (req, res) => {
         stats: { total, pending, contacted, completed, today }
       });
     } else {
-      // Fallback metrics
-      const requestRoutes = require('./requestRoutes');
-      // Memory stats
       return res.json({
         success: true,
         stats: { total: 0, pending: 0, contacted: 0, completed: 0, today: 0 }

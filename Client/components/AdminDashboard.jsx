@@ -230,9 +230,10 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
 
           <form onSubmit={handleLogin} className="admin-login-form">
             <div className="form-group">
-              <label>Admin Username</label>
+              <label className="admin-label">Admin Username</label>
               <input 
                 type="text" 
+                className="admin-input"
                 value={username} 
                 onChange={(e) => setUsername(e.target.value)} 
                 placeholder="Enter username" 
@@ -240,9 +241,10 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
               />
             </div>
             <div className="form-group">
-              <label>Password</label>
+              <label className="admin-label">Password</label>
               <input 
                 type="password" 
+                className="admin-input"
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 placeholder="Enter password" 
@@ -262,7 +264,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
               className="admin-btn-demo"
               onClick={() => { setUsername('balaji'); setPassword('balaji123'); }}
             >
-              ⚡ Quick Credentials (balaji / balaji123)
+              ⚡ Fill Admin Credentials
             </button>
           </form>
 
