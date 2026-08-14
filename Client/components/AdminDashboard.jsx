@@ -105,14 +105,14 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
     setLoginError('');
     setLoggingIn(true);
 
-    const userToLogin = 'balaji';
-    const passToLogin = 'balaji123';
+    // const userToLogin = 'balaji';
+    // const passToLogin = 'balaji123';
 
     try {
-      const result = await adminLogin(userToLogin, passToLogin);
+      const result = await adminLogin(username, password);
       if (result.success && result.token) {
         setAuthToken(result.token);
-        setAdminUser(result.admin || { username: userToLogin });
+        setAdminUser(result.admin || { username });
       }
     } catch (err) {
       setLoginError(err.message || 'Invalid username or password.');
