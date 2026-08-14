@@ -1,6 +1,7 @@
-// API client helper for Balaji Electrical Solution Frontend & Admin Portal
+const API_BASE = process.env.NEXT_PUBLIC_API_URL !== undefined 
+  ? process.env.NEXT_PUBLIC_API_URL 
+  : (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const ADMIN_TOKEN_KEY = 'balaji_admin_jwt_token';
 const ADMIN_USER_KEY = 'balaji_admin_user_info';
 
