@@ -58,10 +58,21 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'API Route not found' });
 });
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5000;
+
+const server = app.listen(PORT, () => {
   console.log(`=================================================`);
   console.log(`🚀 Balaji Electricals Backend Server running on port ${PORT}`);
   console.log(`📍 API Health: http://localhost:${PORT}/api/health`);
   console.log(`=================================================`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n⚠️  [Port Conflict] Port ${PORT} is already in use!`);
+    console.error(`💡 The server is already running in the background on port ${PORT}.`);
+    console.error(`👉 If you want to restart it manually, run: taskkill /F /IM node.exe\n`);
+  } else {
+    console.error('[Server Error]', err);
+  }
 });

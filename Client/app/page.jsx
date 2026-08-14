@@ -1,24 +1,27 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock3, House, Lightbulb, Menu, MessageCircle, Phone, ShieldCheck, Sparkles, Star, Wrench, X, Zap, Lock, Shield } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock3, House, Lightbulb, Menu, MessageCircle, Phone, ShieldCheck, Sparkles, Star, Wrench, X, Zap, Lock, Shield, Loader2 } from 'lucide-react'
 import AdminDashboard from '../components/AdminDashboard'
-import { addRequestToStorage } from '../lib/storage'
+import { submitBookingRequest } from '../lib/api'
 
 const phone = '9025249785'
 const waMsg = encodeURIComponent("Hi! I’d like to enquire about your electrical services. Please let me know your availability.")
 const wa = `https://wa.me/91${phone}?text=${waMsg}`
+
 const services = [
   { icon: Lightbulb, title: 'House Wiring', text: 'Safe, neat rewiring and new electrical points for every room.' },
   { icon: Wrench, title: 'Repairs & Service', text: 'Fast help for switches, sockets, fans, tripping and short circuits.' },
   { icon: Zap, title: 'Inverter & UPS', text: 'Reliable backup power installation and practical maintenance.' },
   { icon: House, title: 'New Installation', text: 'Complete electrical setup for new homes, shops and offices.' },
 ]
+
 const gallery = [
   { src: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=85', alt: 'Electrician working on a home panel' },
   { src: 'https://images.unsplash.com/photo-1555963966-b7ae5404b6ed?auto=format&fit=crop&w=1200&q=85', alt: 'Electrical tools and wiring' },
   { src: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=1200&q=85', alt: 'Professional electrician in safety gear' },
 ]
+
 const reviews = [
   { quote: 'Balaji came the same evening and fixed the fan wiring without making a mess. Very dependable service.', name: 'Suresh K.', place: 'Manalurpet' },
   { quote: 'Clear pricing, clean work and he explained everything simply. I recommend him for any home electrical work.', name: 'Meena R.', place: 'Nearby village' },
@@ -62,23 +65,16 @@ export default function Page() {
 
     if (Object.keys(next).length > 0) return
 
-    // Save request to client-side storage instantly & show success
-    addRequestToStorage({ name, phone: phoneVal, service, date })
-    setSent(true)
-    setSubmitting(false)
+    setSubmitting(true)
 
-    // Optional background sync with backend server if running
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-      fetch(`${apiUrl}/api/requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone: phoneVal, service, date })
-      }).catch((err) => {
-         console.log(err,'something went wrong')
-      })
+      // Direct API Submission to Backend Database
+      await submitBookingRequest({ name, phone: phoneVal, service, date })
+      setSent(true)
     } catch (err) {
-      // Ignore network sync errors
+      setApiError(err.message || 'Unable to save request to server database. Please check connection.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -103,12 +99,12 @@ export default function Page() {
           <span>Balaji <span>Electrical<span> Solution</span> </span></span>
         </AppLink>
         <button className="menu-btn" onClick={() => setMenu(!menu)} aria-label="Toggle navigation" aria-expanded={menu}>
-          {menu ? <X /> : <Menu />}
+          {menu ? <X size={22} /> : <Menu size={22} />}
         </button>
         <div className={`nav-links ${menu ? 'open' : ''}`}>
-          <AppLink href="#services" className="nav-link">Services</AppLink>
-          <AppLink href="#about" className="nav-link">About us</AppLink>
-          <AppLink href="#work" className="nav-link">Our work</AppLink>
+          <AppLink href="#services" className="nav-link" onClick={() => setMenu(false)}>Services</AppLink>
+          <AppLink href="#about" className="nav-link" onClick={() => setMenu(false)}>About us</AppLink>
+          <AppLink href="#work" className="nav-link" onClick={() => setMenu(false)}>Our work</AppLink>
           <AppLink href="#book" className="nav-cta" onClick={() => setMenu(false)}>
             Book a visit <ArrowRight size={16} />
           </AppLink>
@@ -124,7 +120,7 @@ export default function Page() {
           <p className="hero-text">Trusted electrical work by <strong>Balaji</strong> — from a quick repair to a complete home wiring, done safely and honestly.</p>
           <div className="hero-actions">
             <AppLink href={`tel:${phone}`} className="button button-primary"><Phone size={17} /> Call now</AppLink>
-            <AppLink href={wa} className="button button-secondary"><MessageCircle size={18} /> WhatsApp us</AppLink>
+            <AppLink href={wa} target="_blank" rel="noopener noreferrer" className="button button-secondary"><MessageCircle size={18} /> WhatsApp us</AppLink>
           </div>
           <div className="hero-note">
             <div className="avatar-stack"><span>B</span><span>S</span><span>M</span><span>+</span></div>
@@ -134,7 +130,7 @@ export default function Page() {
         <div className="hero-image-wrap">
           <div className="hero-image"><img src={gallery[0].src} alt={gallery[0].alt} /></div>
           <div className="hero-badge"><ShieldCheck size={22} /><span><strong>Safety first</strong><small>Every job, every time</small></span></div>
-          <div className="bolt-deco"><Zap fill="currentColor" /></div>
+          <div className="bolt-deco"><Zap size={36} fill="currentColor" /></div>
         </div>
       </div>
     </section>
@@ -157,9 +153,11 @@ export default function Page() {
         <div className="service-grid">
           {services.map(({ icon: Icon, title, text }) => 
             <article className="service-card" key={title}>
-              <div className="service-icon"><Icon size={22} /></div>
-              <h3>{title}</h3>
-              <p>{text}</p>
+              <div>
+                <div className="service-icon"><Icon size={22} /></div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
               <AppLink href="#book" className="text-link">Book this service <ArrowRight size={15} /></AppLink>
             </article>
           )}
@@ -235,14 +233,14 @@ export default function Page() {
         <div className="form-card">
           {sent ? (
             <div className="success">
-              <div className="success-icon"><Check /></div>
+              <div className="success-icon"><Check size={28} /></div>
               <h3>Request received.</h3>
               <p>Thanks for reaching out. Balaji will call you shortly to confirm your visit.</p>
               <button className="button button-dark" onClick={() => setSent(false)}>Send another request</button>
             </div>
           ) : (
             <form onSubmit={submit} noValidate>
-              {apiError && <div style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.9rem', backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', borderRadius: '0.375rem' }}>{apiError}</div>}
+              {apiError && <div style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.9rem', backgroundColor: '#fef2f2', padding: '0.6rem 0.85rem', borderRadius: '0.375rem', border: '1px solid #fca5a5' }}>{apiError}</div>}
               <div className="form-row">
                 <label>Name<input name="name" placeholder="Your name" />{errors.name && <small className="error">{errors.name}</small>}</label>
                 <label>Phone<input name="phone" inputMode="numeric" placeholder="10-digit number" />{errors.phone && <small className="error">{errors.phone}</small>}</label>
@@ -257,7 +255,13 @@ export default function Page() {
               </label>
               <label>Preferred date<input name="date" type="date" />{errors.date && <small className="error">{errors.date}</small>}</label>
               <button className="button button-primary submit" type="submit" disabled={submitting}>
-                {submitting ? 'Submitting...' : 'Request a visit'} <ArrowRight size={17} />
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={16} className="spin" /> Submitting...
+                  </span>
+                ) : (
+                  <>Request a visit <ArrowRight size={17} /></>
+                )}
               </button>
               <p className="form-foot">No obligation. We&apos;ll confirm availability by phone.</p>
             </form>
@@ -278,13 +282,13 @@ export default function Page() {
         <div className="footer-contact">
           <span>Get in touch</span>
           <AppLink href={`tel:${phone}`}>{phone}</AppLink>
-          <AppLink href={wa}>WhatsApp us <ArrowUpRight size={15} /></AppLink>
+          <AppLink href={wa} target="_blank" rel="noopener noreferrer">WhatsApp us <ArrowUpRight size={15} /></AppLink>
         </div>
         <div className="footer-contact">
           <span>Admin Portal</span>
           <button 
             onClick={() => setShowAdmin(true)}
-            style={{ background: 'none', border: 'none', color: '#38bdf8', padding: 0, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', color: '#38bdf8', padding: 0, fontSize: '13px', cursor: 'pointer', display: 'flex', items: 'center', gap: '6px', fontWeight: 'bold' }}
           >
             <Shield size={14} /> Open Admin Dashboard
           </button>
@@ -298,7 +302,7 @@ export default function Page() {
 
     {selected && (
       <div className="modal" role="dialog" aria-modal="true" aria-label="Project image" onClick={() => setSelected(null)}>
-        <button className="modal-close" onClick={() => setSelected(null)} aria-label="Close image"><X /></button>
+        <button className="modal-close" onClick={() => setSelected(null)} aria-label="Close image"><X size={20} /></button>
         <img src={selected.src} alt={selected.alt} onClick={(e) => e.stopPropagation()} />
       </div>
     )}

@@ -29,6 +29,10 @@ const requestSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  estimatedCost: {
+    type: String,
+    default: '',
+  },
   createdAt: {
     type: Date,
     default: Date.now,

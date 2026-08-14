@@ -5,7 +5,30 @@ const verifyAdminToken = require('../middleware/auth');
 const mongoose = require('mongoose');
 
 // In-memory fallback storage if MongoDB is not connected
-let memoryRequests = [];
+let memoryRequests = [
+  {
+    _id: 'mem_101',
+    name: 'Suresh K.',
+    phone: '9840123456',
+    service: 'Repairs & Service',
+    preferredDate: '2026-08-15',
+    status: 'Pending',
+    notes: 'Ceiling fan making noisy sound in front hall. Need visit by 5 PM.',
+    estimatedCost: '₹350',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2)
+  },
+  {
+    _id: 'mem_102',
+    name: 'Meena R.',
+    phone: '9443198765',
+    service: 'House Wiring',
+    preferredDate: '2026-08-16',
+    status: 'Contacted',
+    notes: 'Kitchen power points addition + main switchboard safety test.',
+    estimatedCost: '₹1,500',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24)
+  }
+];
 
 // Helper to check DB connection status
 const isDbConnected = () => mongoose.connection.readyState === 1;
@@ -14,9 +37,10 @@ const isDbConnected = () => mongoose.connection.readyState === 1;
 // @desc    Submit a new service request (Client Public)
 router.post('/', async (req, res) => {
   try {
-    const { name, phone, service, date } = req.body;
+    const { name, phone, service, date, preferredDate, notes, estimatedCost } = req.body;
+    const reqDate = date || preferredDate;
 
-    if (!name || !phone || !service || !date) {
+    if (!name || !phone || !service || !reqDate) {
       return res.status(400).json({
         success: false,
         message: 'Please fill in all required fields (name, phone, service, date).'
@@ -37,9 +61,10 @@ router.post('/', async (req, res) => {
         name,
         phone: cleanPhone,
         service,
-        preferredDate: date,
+        preferredDate: reqDate,
         status: 'Pending',
-        notes: ''
+        notes: notes || '',
+        estimatedCost: estimatedCost || ''
       });
       return res.status(201).json({
         success: true,
@@ -53,15 +78,16 @@ router.post('/', async (req, res) => {
         name,
         phone: cleanPhone,
         service,
-        preferredDate: date,
+        preferredDate: reqDate,
         status: 'Pending',
-        notes: '',
+        notes: notes || '',
+        estimatedCost: estimatedCost || '',
         createdAt: new Date()
       };
       memoryRequests.unshift(fallbackRequest);
       return res.status(201).json({
         success: true,
-        message: 'Request submitted successfully! (Memory mode)',
+        message: 'Request submitted successfully!',
         data: fallbackRequest
       });
     }
@@ -86,7 +112,8 @@ router.get('/', verifyAdminToken, async (req, res) => {
         query.$or = [
           { name: { $regex: search, $options: 'i' } },
           { phone: { $regex: search, $options: 'i' } },
-          { service: { $regex: search, $options: 'i' } }
+          { service: { $regex: search, $options: 'i' } },
+          { notes: { $regex: search, $options: 'i' } }
         ];
       }
       const requests = await Request.find(query).sort({ createdAt: -1 });
@@ -99,9 +126,10 @@ router.get('/', verifyAdminToken, async (req, res) => {
       if (search) {
         const q = search.toLowerCase();
         filtered = filtered.filter(r => 
-          r.name.toLowerCase().includes(q) || 
-          r.phone.includes(q) || 
-          r.service.toLowerCase().includes(q)
+          (r.name && r.name.toLowerCase().includes(q)) || 
+          (r.phone && r.phone.includes(q)) || 
+          (r.service && r.service.toLowerCase().includes(q)) ||
+          (r.notes && r.notes.toLowerCase().includes(q))
         );
       }
       return res.json({ success: true, count: filtered.length, data: filtered });
@@ -113,16 +141,17 @@ router.get('/', verifyAdminToken, async (req, res) => {
 });
 
 // @route   PATCH /api/requests/:id
-// @desc    Update request status or notes (Admin protected)
+// @desc    Update request status, notes or estimated cost (Admin protected)
 router.patch('/:id', verifyAdminToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, estimatedCost } = req.body;
 
     if (isDbConnected() && !id.startsWith('mem_')) {
       const updateData = {};
       if (status) updateData.status = status;
       if (notes !== undefined) updateData.notes = notes;
+      if (estimatedCost !== undefined) updateData.estimatedCost = estimatedCost;
 
       const updated = await Request.findByIdAndUpdate(id, updateData, { new: true });
       if (!updated) {
@@ -136,6 +165,7 @@ router.patch('/:id', verifyAdminToken, async (req, res) => {
       }
       if (status) memoryRequests[index].status = status;
       if (notes !== undefined) memoryRequests[index].notes = notes;
+      if (estimatedCost !== undefined) memoryRequests[index].estimatedCost = estimatedCost;
       return res.json({ success: true, message: 'Request updated successfully.', data: memoryRequests[index] });
     }
   } catch (error) {

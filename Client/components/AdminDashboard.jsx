@@ -16,31 +16,28 @@ import {
   Trash2, 
   Save, 
   FileText,
-  Filter,
   X,
   Download,
   DollarSign,
-  TrendingUp,
-  LayoutDashboard,
   Wrench,
   BarChart3,
-  ShieldCheck,
-  Check,
-  ExternalLink,
-  ArrowLeft
+  Shield,
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { 
-  getStoredRequests, 
-  saveRequests, 
-  updateRequestInStorage, 
-  deleteRequestFromStorage,
-  getAdminAuth,
-  setAdminAuth,
-  clearAdminAuth
-} from '../lib/storage';
+  getAdminToken, 
+  getAdminUser, 
+  clearAdminAuth, 
+  adminLogin, 
+  fetchAdminRequests, 
+  updateAdminRequest, 
+  deleteAdminRequest 
+} from '../lib/api';
 
 export default function AdminDashboard({ onClose, onNavigateHome }) {
-  const [auth, setAuthState] = useState(() => getAdminAuth());
+  const [authToken, setAuthToken] = useState(() => getAdminToken());
+  const [adminUser, setAdminUser] = useState(() => getAdminUser());
   
   // Login form state
   const [username, setUsername] = useState('');
@@ -59,24 +56,28 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
   const [editingNotes, setEditingNotes] = useState({});
   const [editingCosts, setEditingCosts] = useState({});
   const [savedSuccessMsg, setSavedSuccessMsg] = useState('');
+  const [apiErr, setApiErr] = useState('');
 
   // Services list
-  const [servicesList, setServicesList] = useState([
+  const [servicesList] = useState([
     { id: 1, title: 'House Wiring', priceRange: '₹1,500 - ₹15,000', status: 'Active', desc: 'Safe, neat rewiring and new electrical points.' },
     { id: 2, title: 'Repairs & Service', priceRange: '₹200 - ₹800', status: 'Active', desc: 'Switches, fans, tripping and short circuits.' },
     { id: 3, title: 'Inverter & UPS', priceRange: '₹800 - ₹3,000', status: 'Active', desc: 'Backup power installation and maintenance.' },
     { id: 4, title: 'New Installation', priceRange: '₹1,000 - ₹10,000', status: 'Active', desc: 'Complete setup for homes, shops and offices.' }
   ]);
 
-  // Load requests on mount & when auth changes
+  // Load requests when auth changes or filters change
   useEffect(() => {
-    loadRequests();
-  }, [auth]);
+    if (authToken) {
+      loadRequests();
+    }
+  }, [authToken, statusFilter]);
 
-  const loadRequests = () => {
+  const loadRequests = async () => {
     setLoading(true);
+    setApiErr('');
     try {
-      const data = getStoredRequests();
+      const data = await fetchAdminRequests(statusFilter, search);
       setRequests(data);
       
       const notesMap = {};
@@ -88,59 +89,80 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
       setEditingNotes(notesMap);
       setEditingCosts(costsMap);
     } catch (err) {
-      console.error('Error loading requests:', err);
+      if (err.message === 'UNAUTHORIZED') {
+        handleLogout();
+        setLoginError('Session expired. Please log in again.');
+      } else {
+        setApiErr(err.message || 'Failed to load requests from server DB.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
     setLoggingIn(true);
 
-    setTimeout(() => {
-      if (username === 'balaji' && password === 'balaji123') {
-        const authData = { username: 'admin', token: 'demo_token_' + Date.now(), loggedInAt: new Date().toISOString() };
-        setAdminAuth(authData);
-        setAuthState(authData);
-      } else {
-        setLoginError('Invalid username or password');
+    try {
+      const result = await adminLogin(username, password);
+      if (result.success && result.token) {
+        setAuthToken(result.token);
+        setAdminUser(result.admin || { username });
       }
+    } catch (err) {
+      setLoginError(err.message || 'Invalid username or password.');
+    } finally {
       setLoggingIn(false);
-    }, 400);
+    }
   };
 
   const handleLogout = () => {
     clearAdminAuth();
-    setAuthState(null);
+    setAuthToken(null);
+    setAdminUser(null);
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    const updated = updateRequestInStorage(id, { status: newStatus });
-    setRequests(updated);
-    showTempToast(`Status updated to "${newStatus}"`);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const updatedItem = await updateAdminRequest(id, { status: newStatus });
+      setRequests(prev => prev.map(r => r._id === id ? { ...r, status: newStatus } : r));
+      showTempToast(`Status updated to "${newStatus}" in DB`);
+    } catch (err) {
+      if (err.message === 'UNAUTHORIZED') handleLogout();
+      alert(`Error updating status: ${err.message}`);
+    }
   };
 
-  const handleSaveNotesAndCost = (id) => {
-    const updated = updateRequestInStorage(id, { 
-      notes: editingNotes[id] || '',
-      estimatedCost: editingCosts[id] || ''
-    });
-    setRequests(updated);
-    showTempToast('Saved notes & pricing estimate');
+  const handleSaveNotesAndCost = async (id) => {
+    try {
+      const notesVal = editingNotes[id] || '';
+      const costVal = editingCosts[id] || '';
+      await updateAdminRequest(id, { notes: notesVal, estimatedCost: costVal });
+      setRequests(prev => prev.map(r => r._id === id ? { ...r, notes: notesVal, estimatedCost: costVal } : r));
+      showTempToast('Saved notes & quote directly to DB');
+    } catch (err) {
+      if (err.message === 'UNAUTHORIZED') handleLogout();
+      alert(`Error saving details: ${err.message}`);
+    }
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm('Are you sure you want to delete this customer request?')) return;
-    const updated = deleteRequestFromStorage(id);
-    setRequests(updated);
-    showTempToast('Request deleted');
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this customer request from the database?')) return;
+    try {
+      await deleteAdminRequest(id);
+      setRequests(prev => prev.filter(r => r._id !== id));
+      showTempToast('Request deleted from DB');
+    } catch (err) {
+      if (err.message === 'UNAUTHORIZED') handleLogout();
+      alert(`Error deleting request: ${err.message}`);
+    }
   };
 
   const showTempToast = (msg) => {
     setSavedSuccessMsg(msg);
-    setTimeout(() => setSavedSuccessMsg(''), 3000);
+    setTimeout(() => setSavedSuccessMsg(''), 3500);
   };
 
   const exportCSV = () => {
@@ -150,7 +172,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
       `"${r.name || ''}"`,
       `"${r.phone || ''}"`,
       `"${r.service || ''}"`,
-      `"${r.date || r.preferredDate || ''}"`,
+      `"${r.preferredDate || r.date || ''}"`,
       `"${r.status || 'Pending'}"`,
       `"${r.estimatedCost || ''}"`,
       `"${(r.notes || '').replace(/"/g, '""')}"`,
@@ -161,16 +183,14 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `balaji_electricals_requests_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `balaji_electricals_db_requests_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Filtering
+  // Client side search filter over fetched list
   const filteredRequests = requests.filter(r => {
-    const matchStatus = statusFilter === 'All' || r.status === statusFilter;
-    if (!matchStatus) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -190,7 +210,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
   const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   // Unauthenticated Lock Screen
-  if (!auth) {
+  if (!authToken) {
     return (
       <div className="admin-lockscreen-wrapper">
         <div className="admin-login-card animate-in fade-in zoom-in">
@@ -199,7 +219,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
               <Zap size={28} fill="currentColor" />
             </div>
             <h2>Balaji Electrical Solution</h2>
-            <p className="subtitle">Client-Side Admin Control Dashboard</p>
+            <p className="subtitle">Database Admin Portal</p>
           </div>
 
           {loginError && (
@@ -230,7 +250,11 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
               />
             </div>
             <button type="submit" className="admin-btn-primary" disabled={loggingIn}>
-              {loggingIn ? 'Authenticating...' : 'Access Admin Dashboard'}
+              {loggingIn ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 size={16} className="spin" /> Authenticating...
+                </span>
+              ) : 'Access Admin Dashboard'}
             </button>
 
             <button 
@@ -238,7 +262,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
               className="admin-btn-demo"
               onClick={() => { setUsername('balaji'); setPassword('balaji123'); }}
             >
-              ⚡ Fill Quick Credentials
+              ⚡ Quick Credentials (balaji / balaji123)
             </button>
           </form>
 
@@ -270,8 +294,8 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
             <Zap size={22} fill="currentColor" />
           </div>
           <div>
-            <h1 className="admin-app-title">Balaji Electrical Solution <span>Admin Portal</span></h1>
-            <p className="admin-app-sub">Manage Customer Enquiries, Jobs & Service Status</p>
+            <h1 className="admin-app-title">Balaji Electrical Solution <span>Admin DB Portal</span></h1>
+            <p className="admin-app-sub">Database Mode • Logged in as <strong>{adminUser?.username || 'Admin'}</strong></p>
           </div>
         </div>
 
@@ -296,7 +320,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
           className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
           onClick={() => setActiveTab('requests')}
         >
-          <FileText size={17} /> Customer Requests ({totalCount})
+          <FileText size={17} /> Live Requests DB ({totalCount})
         </button>
         <button 
           className={`admin-tab-btn ${activeTab === 'services' ? 'active' : ''}`}
@@ -312,6 +336,15 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
         </button>
       </div>
 
+      {apiErr && (
+        <div style={{ margin: '15px 24px 0', background: '#fef2f2', border: '1px solid #fca5a5', padding: '12px 16px', borderRadius: '8px', color: '#991b1b', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={18} /> <span>{apiErr}</span>
+          </div>
+          <button onClick={loadRequests} style={{ background: '#991b1b', color: '#fff', border: 0, padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>Retry Connection</button>
+        </div>
+      )}
+
       {/* TAB 1: SERVICE REQUESTS */}
       {activeTab === 'requests' && (
         <>
@@ -323,7 +356,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
               </div>
               <div>
                 <span className="metric-val">{totalCount}</span>
-                <span className="metric-label">Total Bookings</span>
+                <span className="metric-label">Total DB Bookings</span>
               </div>
             </div>
 
@@ -393,25 +426,26 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
                   onClick={() => setStatusFilter(st)}
                 >
                   {st}
-                  {st !== 'All' && (
-                    <span className="count">
-                      {requests.filter(r => r.status === st).length}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
 
-            <button onClick={loadRequests} className="admin-refresh-btn" title="Reload requests">
+            <button onClick={loadRequests} className="admin-refresh-btn" title="Reload requests from server DB">
               <RefreshCw size={15} className={loading ? 'spin' : ''} />
             </button>
           </div>
 
           {/* Requests Content List */}
-          {filteredRequests.length === 0 ? (
+          {loading ? (
+            <div className="admin-empty-state" style={{ minHeight: '260px' }}>
+              <RefreshCw size={36} className="spin empty-icon" />
+              <h3>Loading Database Requests...</h3>
+              <p>Fetching real-time customer data from backend server</p>
+            </div>
+          ) : filteredRequests.length === 0 ? (
             <div className="admin-empty-state">
               <AlertCircle size={38} className="empty-icon" />
-              <h3>No Customer Requests Found</h3>
+              <h3>No Customer Requests Found in Database</h3>
               <p>{search ? `No customer enquiries matching "${search}"` : `No requests found under status "${statusFilter}"`}</p>
               {search && (
                 <button onClick={() => setSearch('')} className="admin-btn-secondary mt-2">
@@ -425,7 +459,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
                 const formattedPhone = (req.phone || '').replace(/\D/g, '');
                 const waLink = `https://wa.me/91${formattedPhone}?text=${encodeURIComponent(`Hello ${req.name}, regarding your electrical service request for ${req.service} - Balaji Electricals`)}`;
                 const callLink = `tel:${formattedPhone}`;
-                const dateDisplay = req.date || req.preferredDate || 'Asap';
+                const dateDisplay = req.preferredDate || req.date || 'Asap';
                 const createdTime = req.createdAt ? new Date(req.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Recently';
 
                 return (
@@ -469,7 +503,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
 
                     {/* Status Select & Delete */}
                     <div className="req-status-row">
-                      <label className="status-label">Update Status:</label>
+                      <label className="status-label">Update DB Status:</label>
                       <select 
                         className="status-dropdown" 
                         value={req.status || 'Pending'} 
@@ -485,7 +519,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
                       <button 
                         className="delete-icon-btn" 
                         onClick={() => handleDelete(req._id)} 
-                        title="Delete Request"
+                        title="Delete Request from Database"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -499,7 +533,7 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
                           onClick={() => handleSaveNotesAndCost(req._id)}
                           className="save-notes-btn"
                         >
-                          <Save size={13} /> Save Details
+                          <Save size={13} /> Save to DB
                         </button>
                       </div>
                       
@@ -566,8 +600,8 @@ export default function AdminDashboard({ onClose, onNavigateHome }) {
         <div className="admin-analytics-tab">
           <div className="tab-section-header">
             <div>
-              <h2>Business Analytics Overview</h2>
-              <p>Key service statistics and performance summary</p>
+              <h2>Database Analytics Overview</h2>
+              <p>Key service statistics and performance summary directly from backend database</p>
             </div>
           </div>
 
